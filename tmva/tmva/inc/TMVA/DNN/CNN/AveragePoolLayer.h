@@ -196,8 +196,10 @@ auto TAveragePoolLayer<Architecture_t>::Backward(std::vector<Matrix_t> &gradient
                                              std::vector<Matrix_t> & /*inp1*/, std::vector<Matrix_t> &
                                              /*inp2*/) -> void
 {
-   Architecture_t::AveragePoolLayerBackward(gradients_backward, this->GetActivationGradients(), indexMatrix,
-                                        this->GetBatchSize(), this->GetDepth(), this->GetNLocalViews());
+   Architecture_t::AveragePoolLayerBackward(gradients_backward, this->GetActivationGradients(),
+                                        this->GetBatchSize(), this->GetInputHeight(), this->GetInputWidth(), this->GetDepth(), 
+					this->GetHeight(), this->GetWidth(), this->GetFilterDepth(), this->GetFilterHeight(),
+                                        this->GetFilterWidth(), this->GetNLocalViews());
 }
 
 //______________________________________________________________________________

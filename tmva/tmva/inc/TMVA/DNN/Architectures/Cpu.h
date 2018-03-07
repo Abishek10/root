@@ -405,8 +405,8 @@ public:
     *  gradients to the previous layer. */
    static void AveragePoolLayerBackward(std::vector<TCpuMatrix<AReal>> &activationGradientsBackward,
                                     const std::vector<TCpuMatrix<AReal>> &activationGradients,
-                                    const std::vector<TCpuMatrix<AReal>> &indexMatrix, size_t batchSize, size_t depth,
-                                    size_t nLocalViews);
+                                    size_t batchSize, size_t inputHeight, size_t inputWidth, size_t depth, size_t height,
+                                    size_t width, size_t filterDepth, size_t filterHeight, size_t filterWidth, size_t nLocalViews);
 
    ///@}
 

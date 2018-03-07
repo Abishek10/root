@@ -572,7 +572,7 @@ void TCpu<AFloat>::MaxPoolLayerBackward(std::vector<TCpuMatrix<AFloat>> &activat
 
 //____________________________________________________________________________
 template <typename AFloat>
-void TCpu<AFloat>::AverageDownsample(TCpuMatrix<AFloat> &A, TCpuMatrix<AFloat> &B, const TCpuMatrix<AFloat> &C,
+void TCpu<AFloat>::AverageDownsample(TCpuMatrix<AFloat> &A, const TCpuMatrix<AFloat> &C,
                               size_t imgHeight, size_t imgWidth, size_t fltHeight, size_t fltWidth, size_t strideRows,
                               size_t strideCols)
 {
@@ -580,23 +580,23 @@ void TCpu<AFloat>::AverageDownsample(TCpuMatrix<AFloat> &A, TCpuMatrix<AFloat> &
    int imgHeightBound = imgHeight - (fltHeight - 1) / 2 - 1;
    int imgWidthBound = imgWidth - (fltWidth - 1) / 2 - 1;
    size_t currLocalView = 0;
+   size_t fltSize = fltHeight * fltWidth;
 
    // centers
    for (int i = fltHeight / 2; i <= imgHeightBound; i += strideRows) {
       for (int j = fltWidth / 2; j <= imgWidthBound; j += strideCols) {
          // within local views
          for (int m = 0; m < (Int_t)C.GetNrows(); m++) {
-            AFloat value = -std::numeric_limits<AFloat>::max();
+            AFloat value = 0;
 
             for (int k = i - fltHeight / 2; k <= Int_t(i + (fltHeight - 1) / 2); k++) {
                for (int l = j - fltWidth / 2; l <= Int_t(j + (fltWidth - 1) / 2); l++) {
                   if (C(m, k * imgWidth + l) > value) {
-                     value = C(m, k * imgWidth + l);
-                     B(m, currLocalView) = k * imgWidth + l;
+                     value += C(m, k * imgWidth + l);
                   }
                }
             }
-            A(m, currLocalView) = value;
+            A(m, currLocalView) = (value / fltSize);
          }
          currLocalView++;
       }
@@ -607,21 +607,29 @@ void TCpu<AFloat>::AverageDownsample(TCpuMatrix<AFloat> &A, TCpuMatrix<AFloat> &
 template <typename AFloat>
 void TCpu<AFloat>::AveragePoolLayerBackward(std::vector<TCpuMatrix<AFloat>> &activationGradientsBackward,
                                         const std::vector<TCpuMatrix<AFloat>> &activationGradients,
-                                        const std::vector<TCpuMatrix<AFloat>> &indexMatrix, size_t batchSize,
-                                        size_t depth, size_t nLocalViews)
+                                        size_t batchSize, size_t inputHeight, size_t inputWidth, size_t depth, size_t height,
+                                        size_t width, size_t filterDepth, size_t filterHeight, size_t filterWidth, size_t nLocalViews)
 {
-   for (size_t i = 0; i < batchSize; i++) {
-      for (size_t j = 0; j < depth; j++) {
+   
+  // Calculate the number of local views and the number of pixles in each view
+  size_t tempNLocalViews = inputHeight * inputWidth;
+  size_t tempNLocalViewPixels = depth * filterHeight * filterWidth;
 
-         // initialize to zeros
-         for (size_t t = 0; t < (size_t)activationGradientsBackward[i].GetNcols(); t++) {
-            activationGradientsBackward[i](j, t) = 0;
-         }
+  size_t tempStrideRows = 1;
+  size_t tempStrideCols = 1;
+
+  for (size_t i = 0; i < batchSize; i++) {
+      TCpuMatrix<AFloat> dfTr(tempNLocalViews, tempNLocalViewPixels);
+
+      Im2col(dfTr, activationGradientsBackward[i], height, width, filterHeight, filterWidth, tempStrideRows, tempStrideCols,
+              0, 0);
+
+      for (size_t j = 0; j < depth; j++) {
 
          // set values
          for (size_t k = 0; k < nLocalViews; k++) {
             AFloat grad = activationGradients[i](j, k);
-            size_t winningIdx = indexMatrix[i](j, k);
+	    dftr(
             activationGradientsBackward[i](j, winningIdx) += grad;
          }
       }
