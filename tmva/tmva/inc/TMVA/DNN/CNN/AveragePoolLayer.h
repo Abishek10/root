@@ -183,7 +183,7 @@ auto TAveragePoolLayer<Architecture_t>::Forward(std::vector<Matrix_t> &input, bo
          Architecture_t::Dropout(input[i], this->GetDropoutProbability());
       }
 
-      Architecture_t::Downsample(this->GetOutputAt(i), indexMatrix[i], input[i], this->GetInputHeight(),
+      Architecture_t::AverageDownsample(this->GetOutputAt(i), input[i], this->GetInputHeight(),
                                  this->GetInputWidth(), this->GetFrameHeight(), this->GetFrameWidth(),
                                  this->GetStrideRows(), this->GetStrideCols());
    }
