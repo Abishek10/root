@@ -29,8 +29,11 @@
 
 #include "../Utility.h"
 
+#include <cmath>
+
 #include "TMVA/DNN/Functions.h"
 #include "TMVA/DNN/DeepNet.h"
+
 
 using namespace TMVA::DNN;
 using namespace TMVA::DNN::CNN;
@@ -125,6 +128,35 @@ auto testDownsample(const typename Architecture::Matrix_t &A, const typename Arc
    for (size_t i = 0; i < m2; i++) {
       for (size_t j = 0; j < n2; j++) {
          if (AInd(i, j) != ind(i, j)) {
+            return false;
+         }
+      }
+   }
+
+   return true;
+}
+
+
+/** Average Downsample the matrix A and check whether the downsampled version
+ *  is equal to B */
+//______________________________________________________________________________
+template <typename Architecture>
+auto testAverageDownsample(const typename Architecture::Matrix_t &A,
+                    const typename Architecture::Matrix_t &B, size_t imgHeight, size_t imgWidth, size_t fltHeight,
+                    size_t fltWidth, size_t strideRows, size_t strideCols) -> bool
+{
+
+   size_t m1, n1;
+   m1 = B.GetNrows();
+   n1 = B.GetNcols();
+
+   typename Architecture::Matrix_t ADown(m1, n1);
+
+   Architecture::AverageDownsample(ADown, A, imgHeight, imgWidth, fltHeight, fltWidth, strideRows, strideCols);
+
+   for (size_t i = 0; i < m1; i++) {
+      for (size_t j = 0; j < n1; j++) {
+         if (fabs(ADown(i, j) - B(i, j)) > 0.01) {
             return false;
          }
       }

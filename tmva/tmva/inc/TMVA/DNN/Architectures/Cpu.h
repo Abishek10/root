@@ -389,9 +389,8 @@ public:
     */
    ///@{
 
-   /** Downsample the matrix \p C to the matrix \p A, using max
-    * operation, such that the winning indices are stored in matrix
-    * \p B. */
+   /** Downsample the matrix \p C to the matrix \p A, using average
+    * operation*/
    static void AverageDownsample(TCpuMatrix<AReal> &A, const TCpuMatrix<AReal> &C, size_t imgHeight,
                           size_t imgWidth, size_t fltHeight, size_t fltWidth, size_t strideRows, size_t strideCols);
 
@@ -400,9 +399,9 @@ public:
    /** @name Backward Propagation in Average Pooling Layer
     */
    ///@{
-   /** Perform the complete backward propagation step in a Pooling Layer. Based on the
-    *  winning idices stored in the index matrix, it just forwards the actiovation
-    *  gradients to the previous layer. */
+   /** Perform the complete backward propagation step in a Pooling Layer. Based on the computed
+    * it divides the gradient by block size and forwards the activation gradients to 
+    * the previous layer */
    static void AveragePoolLayerBackward(std::vector<TCpuMatrix<AReal>> &activationGradientsBackward,
                                     const std::vector<TCpuMatrix<AReal>> &activationGradients,
                                     size_t batchSize, size_t inputHeight, size_t inputWidth, size_t depth, size_t height,

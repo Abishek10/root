@@ -15,6 +15,9 @@ ROOT_ADD_TEST(TMVA-DNN-CNN-Im2Col COMMAND testIm2Col)
 ROOT_EXECUTABLE(testDownsample TestDownsample.cxx LIBRARIES ${Libraries})
 ROOT_ADD_TEST(TMVA-DNN-CNN-Downsample COMMAND testDownsample)
 
+ROOT_EXECUTABLE(testAverageDownsample TestAverageDownsample.cxx LIBRARIES ${Libraries})
+ROOT_ADD_TEST(TMVA-DNN-CNN-AverageDownsample COMMAND testAverageDownsample)
+
 ROOT_EXECUTABLE(testFlatten TestFlatten.cxx LIBRARIES ${Libraries})
 ROOT_ADD_TEST(TMVA-DNN-CNN-testFlatten COMMAND testFlatten)
 
@@ -52,6 +55,9 @@ ROOT_ADD_TEST(TMVA-DNN-CNN-Im2Col-CPU COMMAND testIm2ColCpu)
 
 ROOT_EXECUTABLE(testDownsampleCpu TestDownsampleCpu.cxx LIBRARIES ${Libraries})
 ROOT_ADD_TEST(TMVA-DNN-CNN-Downsample-CPU COMMAND testDownsampleCpu)
+
+ROOT_EXECUTABLE(testAverageDownsampleCpu TestAverageDownsampleCpu.cxx LIBRARIES ${Libraries})
+ROOT_ADD_TEST(TMVA-DNN-CNN-AverageDownsample-CPU COMMAND testAverageDownsampleCpu)
 
 ROOT_EXECUTABLE(testRotWeightsCpu TestRotateWeightsCpu.cxx LIBRARIES ${Libraries})
 ROOT_ADD_TEST(TMVA-DNN-CNN-rotWeights-CPU COMMAND testrotWeightsCpu)

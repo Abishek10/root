@@ -591,9 +591,7 @@ void TCpu<AFloat>::AverageDownsample(TCpuMatrix<AFloat> &A, const TCpuMatrix<AFl
 
             for (int k = i - fltHeight / 2; k <= Int_t(i + (fltHeight - 1) / 2); k++) {
                for (int l = j - fltWidth / 2; l <= Int_t(j + (fltWidth - 1) / 2); l++) {
-                  if (C(m, k * imgWidth + l) > value) {
                      value += C(m, k * imgWidth + l);
-                  }
                }
             }
             A(m, currLocalView) = (value / fltSize);
@@ -621,7 +619,7 @@ void TCpu<AFloat>::AveragePoolLayerBackward(std::vector<TCpuMatrix<AFloat>> &act
   size_t tempZeroPaddingHeight = 0;
   size_t tempZeroPaddingWidth = 0;
 
-  size_t filterSize = filterHeight * filterWidth
+  size_t filterSize = filterHeight * filterWidth;
 
   for (size_t i = 0; i < batchSize; i++) {
       TCpuMatrix<AFloat> dfTr(tempNLocalViews, tempNLocalViewPixels);
@@ -636,29 +634,31 @@ void TCpu<AFloat>::AveragePoolLayerBackward(std::vector<TCpuMatrix<AFloat>> &act
             AFloat grad = activationGradients[i](j, k);
 	    
 	    for (size_t m = 0; m < filterSize; m++) {
-	    	dftr(k, j * filterSize + m) = grad / filterSize;
+	    	dfTr(k, j * filterSize + m) = grad / filterSize;
 	    }
          }
       }
 
       //Put back to activation Gradients Backwards
    
-      int imgHeightBound = imgHeight + zeroPaddingHeight - (fltHeight - 1) / 2 - 1;
-      int imgWidthBound = imgWidth + zeroPaddingWidth - (fltWidth - 1) / 2 - 1;
+      //Put back to activation Gradients Backwards
+   
+      int imgHeightBound = inputHeight + tempZeroPaddingHeight - (filterHeight - 1) / 2 - 1;
+      int imgWidthBound = inputWidth + tempZeroPaddingWidth - (filterWidth - 1) / 2 - 1;
       size_t currLocalView = 0;
 
-      const int halfFltHeight =  fltHeight / 2;
-      const int halfFltWidth =  fltWidth / 2;
-      const int halfFltHeightM1 = (fltHeight - 1) / 2;
-      const int halfFltWidthM1 = (fltWidth - 1) / 2;
-      const int nRowsInput = B.GetNrows();
-      const int nColsInput = B.GetNcols(); 
-      const int nRowsOutput = A.GetNrows();
-      const int nColsOutput = A.GetNcols(); 
+      const int halfFltHeight =  filterHeight / 2;
+      const int halfFltWidth =  filterWidth / 2;
+      const int halfFltHeightM1 = (filterHeight - 1) / 2;
+      const int halfFltWidthM1 = (filterWidth - 1) / 2;
+      const int nRowsInput = activationGradientsBackward[i].GetNrows();
+      const int nColsInput = activationGradientsBackward[i].GetNcols(); 
+      const int nRowsOutput = dfTr.GetNrows();
+      const int nColsOutput = dfTr.GetNcols();  
 
       // convolution centers
-      for (int i = halfFltHeight -zeroPaddingHeight; i <= imgHeightBound; i += strideRows) {
-         for (int j = halfFltWidth -zeroPaddingWidth ; j <= imgWidthBound; j += strideCols) {
+      for (int i = halfFltHeight - tempZeroPaddingHeight; i <= imgHeightBound; i += tempStrideRows) {
+         for (int j = halfFltWidth - tempZeroPaddingWidth ; j <= imgWidthBound; j += tempStrideCols) {
             size_t currLocalViewPixel = 0;
 
             // within the local view
@@ -672,10 +672,10 @@ void TCpu<AFloat>::AveragePoolLayerBackward(std::vector<TCpuMatrix<AFloat>> &act
                     // Check the boundaries
                     R__ASSERT(currLocalViewPixel < nColsOutput );
                     //R__ASSERT(k * imgWidth + l < B.GetNcols());
-                    if (k < 0 || k >= (Int_t)imgHeight || l < 0 || l >= (Int_t)imgWidth || kstep + l >=  nColsInput)
+                    if (k < 0 || k >= (Int_t)inputHeight || l < 0 || l >= (Int_t)inputWidth || kstep + l >=  nColsInput)
                       activationGradientsBackward[i](m, kstep + l) = 0;
                     else
-                      activationGradientsBackward[i](m, kstep + l) = dftr(currLocalView, currLocalViewPixel);
+                      activationGradientsBackward[i](m, kstep + l) = dfTr(currLocalView, currLocalViewPixel);
 		    currLocalViewPixel++;
                   }
               }
@@ -684,7 +684,7 @@ void TCpu<AFloat>::AveragePoolLayerBackward(std::vector<TCpuMatrix<AFloat>> &act
            currLocalView++;
          }
       }
-      
+     
     }
 }
 

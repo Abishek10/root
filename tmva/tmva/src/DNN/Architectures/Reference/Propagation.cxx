@@ -381,6 +381,122 @@ void TReference<AReal>::MaxPoolLayerBackward(std::vector<TMatrixT<AReal>> &activ
    }
 }
 
+//____________________________________________________________________________
+template <typename AReal>
+void TReference<AReal>::AverageDownsample(TMatrixT<AReal> &A, const TMatrixT<AReal> &C,
+                              size_t imgHeight, size_t imgWidth, size_t fltHeight, size_t fltWidth, size_t strideRows,
+                              size_t strideCols)
+{
+   // image boudaries
+   int imgHeightBound = imgHeight - (fltHeight - 1) / 2 - 1;
+   int imgWidthBound = imgWidth - (fltWidth - 1) / 2 - 1;
+   size_t currLocalView = 0;
+   size_t fltSize = fltHeight * fltWidth;
+
+   // centers
+   for (int i = fltHeight / 2; i <= imgHeightBound; i += strideRows) {
+      for (int j = fltWidth / 2; j <= imgWidthBound; j += strideCols) {
+         // within local views
+         for (int m = 0; m < (Int_t)C.GetNrows(); m++) {
+            AReal value = 0;
+
+            for (int k = i - fltHeight / 2; k <= Int_t(i + (fltHeight - 1) / 2); k++) {
+               for (int l = j - fltWidth / 2; l <= Int_t(j + (fltWidth - 1) / 2); l++) {
+                     value += C(m, k * imgWidth + l);
+               }
+            }
+            A(m, currLocalView) = (value / fltSize);
+         }
+         currLocalView++;
+      }
+   }
+}
+
+//____________________________________________________________________________
+template <typename AReal>
+void TReference<AReal>::AveragePoolLayerBackward(std::vector<TMatrixT<AReal>> &activationGradientsBackward,
+                                        const std::vector<TMatrixT<AReal>> &activationGradients,
+                                        size_t batchSize, size_t inputHeight, size_t inputWidth, size_t depth, size_t height,
+                                        size_t width, size_t filterDepth, size_t filterHeight, size_t filterWidth, size_t nLocalViews)
+{
+   
+  // Calculate the number of local views and the number of pixles in each view
+  size_t tempNLocalViews = inputHeight * inputWidth;
+  size_t tempNLocalViewPixels = depth * filterHeight * filterWidth;
+
+  size_t tempStrideRows = 1;
+  size_t tempStrideCols = 1;
+
+  size_t tempZeroPaddingHeight = 0;
+  size_t tempZeroPaddingWidth = 0;
+
+  size_t filterSize = filterHeight * filterWidth;
+
+  for (size_t i = 0; i < batchSize; i++) {
+      TMatrixT<AReal> dfTr(tempNLocalViews, tempNLocalViewPixels);
+
+      Im2col(dfTr, activationGradientsBackward[i], inputHeight, inputWidth, filterHeight, filterWidth, tempStrideRows, tempStrideCols,
+              tempZeroPaddingHeight, tempZeroPaddingWidth);
+
+      for (size_t k = 0; k < nLocalViews; k++) {
+
+         // set values
+         for (size_t j = 0; j < depth; j++) {
+            AReal grad = activationGradients[i](j, k);
+	    
+	    for (size_t m = 0; m < filterSize; m++) {
+	    	dfTr(k, j * filterSize + m) = grad / filterSize;
+	    }
+         }
+      }
+
+      //Put back to activation Gradients Backwards
+   
+      int imgHeightBound = inputHeight + tempZeroPaddingHeight - (filterHeight - 1) / 2 - 1;
+      int imgWidthBound = inputWidth + tempZeroPaddingWidth - (filterWidth - 1) / 2 - 1;
+      size_t currLocalView = 0;
+
+      const int halfFltHeight =  filterHeight / 2;
+      const int halfFltWidth =  filterWidth / 2;
+      const int halfFltHeightM1 = (filterHeight - 1) / 2;
+      const int halfFltWidthM1 = (filterWidth - 1) / 2;
+      const int nRowsInput = activationGradientsBackward[i].GetNrows();
+      const int nColsInput = activationGradientsBackward[i].GetNcols(); 
+      const int nRowsOutput = dfTr.GetNrows();
+      const int nColsOutput = dfTr.GetNcols(); 
+
+      // convolution centers
+      for (int i = halfFltHeight - tempZeroPaddingHeight; i <= imgHeightBound; i += tempStrideRows) {
+         for (int j = halfFltWidth - tempZeroPaddingWidth ; j <= imgWidthBound; j += tempStrideCols) {
+            size_t currLocalViewPixel = 0;
+
+            // within the local view
+            R__ASSERT((int) currLocalView < nRowsOutput );
+
+            for (int m = 0; m < nRowsInput; m++) {
+               for (int k = i - halfFltHeight  ; k <= Int_t(i + halfFltHeightM1 ); k++) {
+                  int kstep = k * inputWidth;
+                  for (int l = j - halfFltWidth ; l <= Int_t(j + halfFltWidthM1); l++) {
+
+                    // Check the boundaries
+                    R__ASSERT(currLocalViewPixel < nColsOutput );
+                    //R__ASSERT(k * inputWidth + l < B.GetNcols());
+                    if (k < 0 || k >= (Int_t)inputHeight || l < 0 || l >= (Int_t)inputWidth || kstep + l >=  nColsInput)
+                      activationGradientsBackward[i](m, kstep + l) = 0;
+                    else
+                      activationGradientsBackward[i](m, kstep + l) = dfTr(currLocalView, currLocalViewPixel);
+		    currLocalViewPixel++;
+                  }
+              }
+           }
+           //std::cout << " i " << i << "  " << j << " increment currLocalView " << currLocalView << std::endl;
+           currLocalView++;
+         }
+      }
+      
+    }
+}
+
 //______________________________________________________________________________
 template <typename AReal>
 void TReference<AReal>::Reshape(TMatrixT<AReal> &A, const TMatrixT<AReal> &B)
